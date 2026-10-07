@@ -1,0 +1,5 @@
+# Build output: app bundle, dmg, notarisation zip
+/build/
+
+.DS_Store
+__pycache__/

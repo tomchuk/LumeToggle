@@ -35,3 +35,9 @@ The menu bar icon shows a filled panel when the lights are on, an outline when t
 - **The icon stays slashed.** Check that the panels are powered on and nearby, and that the Lume Cube phone app is closed. Then right-click and choose **Reconnect**.
 - **No panels ever connect.** Open **System Settings → Privacy & Security → Bluetooth** and make sure LumeToggle is switched on.
 - **The sliders don't match the panels.** LumeToggle can't read settings back from the panels. If you changed them from the phone app, move a slider to send LumeToggle's settings again.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+LumeToggle is an independent project and is not affiliated with, endorsed by, or supported by Lume Cube. "Lume Cube" and "Panel Pro" are trademarks of their owner.

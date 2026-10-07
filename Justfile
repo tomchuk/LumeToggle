@@ -17,7 +17,9 @@ app_name  := "LumeToggle"
 target    := "arm64-apple-macos13.0"
 build_dir := justfile_directory() / "build"
 app_dir   := build_dir / (app_name + ".app")
-dmg       := build_dir / (app_name + ".dmg")
+# Info.plist is the one place the version lives; the DMG name follows it.
+version   := `/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Info.plist`
+dmg       := build_dir / (app_name + "-" + version + ".dmg")
 # A notary profile is just stored Apple ID credentials, not tied to an
 # app, so the one CELS already created is reused.
 notary    := env_var_or_default("NOTARY_PROFILE", "cels-notary")

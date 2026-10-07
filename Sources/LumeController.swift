@@ -74,6 +74,8 @@ final class LumeController: NSObject, ObservableObject {
     @Published private(set) var panelStates: [PanelState] = []
     @Published private(set) var globalBrightness: Int
     @Published private(set) var globalKelvin: Int
+    /// True once a panel's own levels have been set since the global sliders last moved.
+    @Published private(set) var individualMode: Bool
 
     private var central: CBCentralManager!
     private var panels: [UUID: Panel] = [:]
@@ -98,6 +100,7 @@ final class LumeController: NSObject, ObservableObject {
             .flatMap { try? JSONDecoder().decode([String: PanelSettings].self, from: $0) } ?? [:]
         globalBrightness = d.object(forKey: "globalBrightness") as? Int ?? 100
         globalKelvin = d.object(forKey: "globalKelvin") as? Int ?? 5600
+        individualMode = d.bool(forKey: "individualMode")
         super.init()
         central = CBCentralManager(delegate: self, queue: .main)
     }
@@ -124,6 +127,7 @@ final class LumeController: NSObject, ObservableObject {
         guard settings[name, default: .init()].brightness != value else { return }
         settings[name, default: .init()].brightness = value
         queue(name, .brightness)
+        setIndividualMode(true)
         saveSettings()
     }
 
@@ -133,6 +137,7 @@ final class LumeController: NSObject, ObservableObject {
         // The temperature command carries brightness too, so pin it down now.
         if settings[name]?.brightness == nil { settings[name]?.brightness = globalBrightness }
         queue(name, .kelvin)
+        setIndividualMode(true)
         saveSettings()
     }
 
@@ -141,6 +146,7 @@ final class LumeController: NSObject, ObservableObject {
         guard value != globalBrightness else { return }
         globalBrightness = value
         UserDefaults.standard.set(value, forKey: "globalBrightness")
+        setIndividualMode(false)
         for name in allNames {
             settings[name, default: .init()].brightness = value
             queue(name, .brightness)
@@ -153,6 +159,7 @@ final class LumeController: NSObject, ObservableObject {
         guard value != globalKelvin else { return }
         globalKelvin = value
         UserDefaults.standard.set(value, forKey: "globalKelvin")
+        setIndividualMode(false)
         for name in allNames {
             settings[name, default: .init()].kelvin = value
             if settings[name]?.brightness == nil { settings[name]?.brightness = globalBrightness }
@@ -184,6 +191,12 @@ final class LumeController: NSObject, ObservableObject {
     private var allNames: Set<String> { Set(settings.keys).union(panels.values.map(\.name)) }
 
     private func panel(named name: String) -> Panel? { panels.values.first { $0.name == name } }
+
+    private func setIndividualMode(_ on: Bool) {
+        guard individualMode != on else { return }
+        individualMode = on
+        UserDefaults.standard.set(on, forKey: "individualMode")
+    }
 
     private func publish() {
         panelStates = panels.values.sorted { $0.name < $1.name }.map { p in

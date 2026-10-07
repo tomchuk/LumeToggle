@@ -4,6 +4,9 @@ import SwiftUI
 struct ControlPanel: View {
     @ObservedObject var lights: LumeController
     @ObservedObject var app: AppDelegate
+    /// Panel sections that are open. Follows individual mode, but the user can still
+    /// open and close sections by hand in between.
+    @State private var expanded: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -19,12 +22,20 @@ struct ControlPanel: View {
                     .help("All panels")
             }
 
+            // Dimmed but still live while panels have their own levels: moving these
+            // takes over again.
             Levels(brightness: Binding(get: { lights.globalBrightness }, set: { lights.setGlobalBrightness($0) }),
                    kelvin: Binding(get: { lights.globalKelvin }, set: { lights.setGlobalKelvin($0) }))
+                .opacity(lights.individualMode ? 0.4 : 1)
+                .help(lights.individualMode ? "Panels are set individually. Move a slider to set them all." : "")
 
             if !lights.panelStates.isEmpty {
                 Divider()
-                ForEach(lights.panelStates) { PanelRow(panel: $0, lights: lights) }
+                ForEach(lights.panelStates) { panel in
+                    PanelRow(panel: panel, lights: lights, isExpanded: Binding(
+                        get: { expanded.contains(panel.id) },
+                        set: { if $0 { expanded.insert(panel.id) } else { expanded.remove(panel.id) } }))
+                }
             }
 
             Divider()
@@ -38,15 +49,27 @@ struct ControlPanel: View {
         }
         .padding(14)
         .frame(width: 300)
+        .animation(.easeInOut(duration: 0.15), value: lights.individualMode)
+        .onAppear { followMode() }
+        .onChange(of: lights.individualMode) { _ in followMode() }
+        .onChange(of: lights.panelStates.map(\.id)) { ids in
+            // Panels that connect while in individual mode open up like the rest.
+            if lights.individualMode { expanded.formUnion(ids) }
+        }
+    }
+
+    private func followMode() {
+        expanded = lights.individualMode ? Set(lights.panelStates.map(\.id)) : []
     }
 }
 
 private struct PanelRow: View {
     let panel: PanelState
     let lights: LumeController
+    @Binding var isExpanded: Bool
 
     var body: some View {
-        DisclosureGroup {
+        DisclosureGroup(isExpanded: $isExpanded) {
             VStack(alignment: .leading, spacing: 8) {
                 Toggle("On", isOn: Binding(get: { panel.isOn }, set: { lights.setPower($0, panel: panel.id) }))
                     .toggleStyle(.switch)
